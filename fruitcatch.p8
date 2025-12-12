@@ -7,70 +7,44 @@ game_state="title"
 highscore=0
 score=0
 level=1
-
+--player variables
 player_sprite=0
 basket_sprite=1
-
-fruits={}
+player_speed=2
+--object variables
 fruit_start=2
 fruit_count=6
-
-bombs={}
 bomb_sprite=8
-
-hearts={}1	
-heart_sprite=9
-
-gravity=1
+power_up_start=9
+power_up_count=2
 
 function _init()
- --introduce level
- --print("level: ",level)
 	--reset level variables
 	player_x=64
 	player_y=92
 	health=50
+	gravity=1
 	fallobject_interval=20
+	fruits={}
+	bombs={}
+	power_ups={}
 	
 	--create level objects
 	--fruits
-	fruits={}
-	
-	for i=1, level do
-		fruit={
-			sprite=fruit_start+flr(rnd(fruit_count)),
-			x=flr(rnd(120)+5),
-			y=i*(-fallobject_interval)
-		}
-		add(fruits,fruit)
-		end
+	spawn_objects(level,fruit,fruits,fruit,fruit_start,fruit_count)
 	--bombs
-	bombs={}
-	
-	for i=1, level do
-		bomb={
-		sprite=bomb_sprite,
-		x=flr(rnd(120)+5),
-		y=i*(-fallobject_interval)
-		}
-		add(bombs,bomb)
+	if level>1 then
+		spawn_objects(level-1,bombs,bomb,bomb_sprite,0)
 	end
-	heart={}
-		for i=1, level do
-		heart={
-		sprite=heart_sprite,
-		x=flr(rnd(120)+5),
-		y=i*(-fallobject_interval)
-		}
-		add(hearts,heart)
+	--powerups
+	if level>3 then
+		spawn_objects(level-2,power_ups,power_up,power_up_start,power_up_count)
 	end
 end
 
 function _update()
 	--move player
-	if btn(0) then player_x-=2 end
-	if btn(1) then player_x+=2 end
-	
+
 	--move fruits
 	for fruit in all(fruits) do
 		fruit.y+=gravity
@@ -94,8 +68,8 @@ function _update()
 		end
 			test_oob(bomb)
 	end
-	for heart in all(hearts) do
-		heart.y+=gravity
+	for power_up in all(power_ups) do
+		power_up.y+=gravity
 	end
 	--end the level when all fruits consumed
 	if #fruits==0 then
@@ -109,6 +83,7 @@ function _draw()
 	cls()
 	rectfill(0,0,127,100,12) --sky
 	rectfill(0,100,127,127,3) --ground
+	print(level,0,0,7)
 	draw_healthbar(health)
 	--draw sprites
 	spr(player_sprite,player_x,player_y)
@@ -116,8 +91,8 @@ function _draw()
 	draw_group(fruits,fruit)
 	draw_group(bombs,bomb)
 	draw_group(hearts,heart)
- print(score,0,0,7)
- print(level)
+ print("score:"..score,hbar_x,hbar_height+3,7)
+
 end
 
 -->8
@@ -146,12 +121,25 @@ end
 
 -->8
 --helpers
-function test_oob(object)
-	if object.y>128 then
-				object.y=-flr(rnd(10)-8)
-				object.x=flr(rnd(120)+5)
-			end
+--player helpers
+function move_player()
+	if btn(0) and player.x>=0 then player_x-=player_speed end
+	if btn(1) and player.x<=127 then player_x+=player_speed end
 end
+
+--object helpers
+function spawn_objects(spawn_count,objects,object,sprite_start,sprite_count)
+	for i=1, spawn_count do
+		object={
+			object_type=object,
+			sprite=sprite_start+flr(rnd(sprite_count)),
+			x=flr(rnd(120)),
+			y=i*(-fallobject_interval)
+		}
+		add(objects,object)
+	end
+end
+
 function test_playercoll(object)
 		if object.y+4>player_y-8
 		and object.y+4<player_y
@@ -161,20 +149,44 @@ function test_playercoll(object)
 		end
 end
 
+function test_oob(object)
+	if object.y>128 then
+				object.y=-flr(rnd(10)-8)
+				object.x=flr(rnd(120)+5)
+	end
+end
+
 function draw_group(objects,object)
 	for object in all(objects) do
  	spr(object.sprite,object.x,object.y)
  end
 end
-		
+
+function update_object_group(objects,object)
+	for object in all(objects) do
+		object.y+=gravity
+		if test_playercoll(object) and object.object_type=="fruit" then
+			score+=1
+			del(objects,object)
+		elseif test_playercoll(object) and object.object_type=="bomb" then
+			health-=25
+			if health<=0 then
+				level=1
+				score=0
+				_init()
+			end
+			del(objects,object)
+		test_oob(object)
+	end
+end
 __gfx__
-f044440f06666660000043b00000090000b0b0b00000b300000000b0000000000006664400700700000044400000000000000000000000000000000000000000
-f0ffff0f70000006000bb03b00000a40000bbb00000b3300000008730099b3000667766607777770007744400000000000000000000000000000000000000000
-f0ffff0f6777777500b7bb0000000a4000f9a900088338800000807b099b38800665556678877887070744400000000000000000000000000000000000000000
-888ff8886606060500b7bb000000a9400f9a9a40886888880008887b97a999886676555678888887044744400000000000000000000000000000000000000000
-00888800606060650b7bbb30000a940009a9a490867688820080807b9a9999886565555678888887044474400000000000000000000000000000000000000000
-00111100660606050bbbbb300aa940000a9a494088688882088887b3999999886555555607888870444444400000000000000000000000000000000000000000
-0010010060d0d05503bbbb300994000009a4949008888820b7777b30099998800655556600788700c6c0c6c00000000000000000000000000000000000000000
-0dd00dd0055555500033330000000000004949000222220003bbb300008888000666666600077000ccc0ccc00000000000000000000000000000000000000000
+f044440f06666660000043b00000090000b0b0b00000b300000000b0000000000006664400700700000007770000000000000000000000000000000000000000
+f0ffff0f70000006000bb03b00000a40000bbb00000b3300000008730099b3000667766607777770000606770000000000000000000000000000000000000000
+f0ffff0f6777777500b7bb0000000a4000f9a900088338800000807b099b38800665556678877887006067670000000000000000000000000000000000000000
+888ff8886606060500b7bb000000a9400f9a9a40886888880008887b97a999886676555678888887000776770000000000000000000000000000000000000000
+00888800606060650b7bbb30000a940009a9a490867688820080807b9a9999886565555678888887777777670000000000000000000000000000000000000000
+00111100660606050bbbbb300aa940000a9a494088688882088887b3999999886555555607888870777777770000000000000000000000000000000000000000
+0010010060d0d05503bbbb300994000009a4949008888820b7777b300999988006555566007887000c6c0c6c0000000000000000000000000000000000000000
+0dd00dd0055555500033330000000000004949000222220003bbb3000088880006666666000770000ccc0ccc0000000000000000000000000000000000000000
 __sfx__
 000100001c0501e0502005022050230502405026050280502805024050200501c050180501305013050190501d0502105025050250501c050110500c0500c05012050180501d050100500b050080500605006050
